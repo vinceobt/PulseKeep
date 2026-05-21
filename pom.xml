@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pulsekeep</groupId>
+    <artifactId>pulsekeep</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>PulseKeep</name>
+    <description>Lightweight macOS utility to prevent sleep and maintain active presence</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+        <!-- JavaFX 21 LTS -->
+        <javafx.version>21.0.2</javafx.version>
+        <!-- Main class for javafx:run (must extend Application) -->
+        <app.main.class>com.pulsekeep.App</app.main.class>
+        <!-- Launcher wrapper for fat JAR and jpackage (does NOT extend Application) -->
+        <app.launcher.class>com.pulsekeep.Launcher</app.launcher.class>
+    </properties>
+
+    <dependencies>
+        <!-- JavaFX controls (pulls in javafx-base and javafx-graphics transitively) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- ── 1. Compiler ── -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+
+            <!-- ── 2. JavaFX run goal  (mvn javafx:run) ── -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <mainClass>${app.main.class}</mainClass>
+                    <options>
+                        <!--
+                            Force AWT into non-headless mode so that java.awt.Robot
+                            and java.awt.SystemTray work alongside JavaFX on macOS.
+                        -->
+                        <option>-Djava.awt.headless=false</option>
+                        <!--
+                            Keep the macOS Dock icon visible.
+                            Set to "true" to hide the Dock icon (menu-bar-only mode).
+                        -->
+                        <option>-Dapple.awt.UIElement=false</option>
+                    </options>
+                </configuration>
+            </plugin>
+
+            <!-- ── 3. Fat JAR  (mvn clean package) ── -->
+            <!--
+                NOTE: JavaFX native libraries are NOT bundled.
+                Run the fat JAR with a JDK that already includes JavaFX
+                (e.g. Liberica, Azul Zulu FX) or pass the module path explicitly.
+                See README for details.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation=
+                                    "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>${app.launcher.class}</mainClass>
+                                </transformer>
+                            </transformers>
+                            <!-- Suppress duplicate module-info warnings from JavaFX jars -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- ── Native macOS .app packaging (mvn clean package -Ppackage) ── -->
+        <profile>
+            <id>package</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.6.5</version>
+                        <configuration>
+                            <name>PulseKeep</name>
+                            <appVersion>1.0.0</appVersion>
+                            <vendor>PulseKeep</vendor>
+                            <type>APP_IMAGE</type>
+                            <input>target</input>
+                            <mainJar>pulsekeep-1.0.0.jar</mainJar>
+                            <mainClass>${app.launcher.class}</mainClass>
+                            <runtimeImage>target/runtime</runtimeImage>
+                            <javaOptions>
+                                <option>-Djava.awt.headless=false</option>
+                                <option>-Dapple.awt.UIElement=false</option>
+                            </javaOptions>
+                            <destination>target/dist</destination>
+                            <macPackageName>PulseKeep</macPackageName>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>jpackage</id>
+                                <phase>verify</phase>
+                                <goals><goal>jpackage</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
