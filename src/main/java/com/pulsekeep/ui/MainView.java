@@ -1,6 +1,7 @@
 package com.pulsekeep.ui;
 
 import com.pulsekeep.model.AppState;
+import com.pulsekeep.service.AutoShutdownService;
 import com.pulsekeep.service.CaffeinateService;
 import com.pulsekeep.service.SchedulerService;
 import com.pulsekeep.util.Logger;
@@ -10,94 +11,83 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+import java.time.Duration;
 import java.util.Objects;
 
 /**
  * Primary JavaFX window for PulseKeep.
  *
- * <p>Responsibilities:
- * <ul>
- *   <li>Render a minimal dark-themed window with start/stop controls.</li>
- *   <li>Display the current {@link AppState} with a colour-coded indicator.</li>
- *   <li>Show the upcoming nudge interval in a status line.</li>
- *   <li>Display a scrolling real-time activity log fed by {@link Logger}.</li>
- *   <li>Delegate start/stop actions to the service layer.</li>
- * </ul>
- *
- * <p>This class is constructed and used exclusively on the JavaFX Application
- * Thread. Public methods that modify UI nodes call {@link Platform#runLater}
- * internally when invoked from other threads (e.g. the tray AWT thread).
+ * <p>The window has three cards: the keep-awake controls, the auto-shutdown
+ * timer (independent of whether PulseKeep is currently running), and the
+ * activity log.
  */
 public class MainView {
 
     // ── Layout constants ─────────────────────────────────────────────────────
 
-    private static final int WINDOW_WIDTH   = 500;
-    private static final int WINDOW_HEIGHT  = 580;
-    private static final int PADDING        = 24;
-    private static final int ROOT_SPACING   = 16;
-    private static final int BUTTON_SPACING = 12;
+    private static final int WINDOW_WIDTH  = 540;
+    private static final int WINDOW_HEIGHT = 780;
+    private static final int PADDING       = 24;
+    private static final int ROOT_SPACING  = 16;
 
     // ── Service dependencies ─────────────────────────────────────────────────
 
-    private final CaffeinateService caffeinateService;
-    private final SchedulerService  schedulerService;
-
-    // ── Optional tray integration (set after construction) ───────────────────
+    private final CaffeinateService   caffeinateService;
+    private final SchedulerService    schedulerService;
+    private final AutoShutdownService autoShutdownService;
 
     private TrayManager trayManager;
 
     // ── Mutable UI nodes ─────────────────────────────────────────────────────
 
-    private Label    statusLabel;
-    private Label    intervalLabel;
-    private TextArea logArea;
-    private Button   startButton;
-    private Button   stopButton;
+    private Label     statusPill;
+    private Label     intervalLabel;
+    private TextArea  logArea;
+    private Button    startButton;
+    private Button    stopButton;
 
-    // ── Application state ─────────────────────────────────────────────────────
+    private TextField hoursField;
+    private TextField minutesField;
+    private Button    timerButton;
+    private Label     countdownLabel;
+    private Label     timerHint;
+    private HBox      presetRow;
+    private Button    offChip;
+    private HBox      inputRow;
+    private boolean   timerActive = false;
 
     private AppState currentState = AppState.STOPPED;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public MainView(CaffeinateService caffeinateService, SchedulerService schedulerService) {
-        this.caffeinateService = caffeinateService;
-        this.schedulerService  = schedulerService;
+    public MainView(CaffeinateService caffeinateService, SchedulerService schedulerService,
+                    AutoShutdownService autoShutdownService) {
+        this.caffeinateService   = caffeinateService;
+        this.schedulerService    = schedulerService;
+        this.autoShutdownService = autoShutdownService;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /**
-     * Injects the {@link TrayManager} after construction to break the
-     * circular dependency (MainView ↔ TrayManager). Safe to call before
-     * or after {@link #show}.
-     */
     public void setTrayManager(TrayManager trayManager) {
         this.trayManager = trayManager;
     }
 
-    /**
-     * Builds the scene graph, applies the stylesheet, and shows the window.
-     * Must be called on the JavaFX Application Thread.
-     *
-     * @param stage the primary {@link Stage} provided by JavaFX
-     */
     public void show(Stage stage) {
         stage.setTitle("PulseKeep");
         stage.setWidth(WINDOW_WIDTH);
         stage.setHeight(WINDOW_HEIGHT);
         stage.setResizable(false);
 
-        VBox root  = buildRoot();
+        VBox root = buildRoot();
         Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-        // Load external dark-theme stylesheet from the classpath root
         String cssUri = Objects.requireNonNull(
                 getClass().getResource("/styles.css"),
                 "styles.css not found on classpath"
@@ -107,7 +97,6 @@ public class MainView {
         stage.setScene(scene);
         stage.show();
 
-        // Register Logger UI callback: append each line to the log TextArea
         Logger.setUiConsumer(line ->
                 Platform.runLater(() -> {
                     logArea.appendText(line + "\n");
@@ -115,37 +104,97 @@ public class MainView {
                 })
         );
 
-        // Receive interval updates from the scheduler and show them in the UI
         schedulerService.setIntervalUpdateCallback(interval ->
-                Platform.runLater(() -> intervalLabel.setText("Next nudge in: " + interval))
+                Platform.runLater(() -> intervalLabel.setText("Next nudge in " + interval))
         );
     }
 
-    /**
-     * Starts caffeinate and the nudge scheduler.
-     * Safe to call from any thread (e.g. the AWT system-tray thread).
-     */
+    /** Starts caffeinate and the nudge scheduler. Safe to call from any thread. */
     public void handleStart() {
         caffeinateService.start();
         schedulerService.start();
         updateState(AppState.RUNNING);
     }
 
-    /**
-     * Stops the nudge scheduler and kills caffeinate.
-     * Safe to call from any thread.
-     */
+    /** Stops the nudge scheduler and kills caffeinate. Safe to call from any thread. */
     public void handleStop() {
         schedulerService.stop();
         caffeinateService.stop();
         updateState(AppState.STOPPED);
     }
 
-    /**
-     * Returns the current {@link AppState}. Thread-safe read.
-     */
     public AppState getCurrentState() {
         return currentState;
+    }
+
+    // ── Auto-shutdown timer (independent of start/stop) ───────────────────────
+
+    private void toggleTimer() {
+        if (timerActive) {
+            cancelTimer();
+        } else {
+            startTimer();
+        }
+    }
+
+    private void startTimer() {
+        long hours   = parse(hoursField);
+        long minutes = parse(minutesField);
+        Duration d = Duration.ofHours(hours).plusMinutes(minutes);
+        if (d.isZero()) {
+            timerHint.setText("Timer is off – pick a preset or enter a time");
+            return;
+        }
+
+        autoShutdownService.start(
+                d,
+                this::onAutoShutdownExpired,
+                time -> Platform.runLater(() -> {
+                    if (timerActive) countdownLabel.setText(time);
+                })
+        );
+        setTimerActive(true);
+        countdownLabel.setText(String.format("%d:%02d:%02d", d.toHours(), d.toMinutesPart(), d.toSecondsPart()));
+    }
+
+    private void cancelTimer() {
+        autoShutdownService.stop();
+        setTimerActive(false);
+        Logger.log("Auto-shutdown timer cancelled");
+    }
+
+    private void setTimerActive(boolean active) {
+        timerActive = active;
+        timerButton.setText(active ? "Cancel timer" : "Set timer");
+        timerButton.getStyleClass().removeAll("primary-button", "danger-button");
+        timerButton.getStyleClass().add(active ? "danger-button" : "primary-button");
+        // The Off chip stays enabled so the timer can be switched off while running
+        presetRow.getChildren().forEach(n -> n.setDisable(active && n != offChip));
+        hoursField.setDisable(active);
+        minutesField.setDisable(active);
+        countdownLabel.setVisible(active);
+        countdownLabel.setManaged(active);
+        timerHint.setText(active ? "PulseKeep will quit when the timer ends" : "Quit PulseKeep automatically after:");
+        if (!active) countdownLabel.setText("");
+    }
+
+    /** Called on the timer thread when the countdown reaches zero: stop and quit. */
+    private void onAutoShutdownExpired() {
+        Platform.runLater(() -> {
+            Logger.log("Auto-shutdown: quitting PulseKeep");
+            handleStop();
+            Platform.exit();
+        });
+    }
+
+    private static long parse(TextField f) {
+        String t = f.getText();
+        if (t == null || t.isBlank()) return 0;
+        try {
+            return Math.min(Long.parseLong(t.trim()), 999);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     // ── Scene graph construction ──────────────────────────────────────────────
@@ -155,70 +204,100 @@ public class MainView {
         root.setPadding(new Insets(PADDING));
         root.getStyleClass().add("root-container");
 
-        Label titleLabel = new Label("PulseKeep");
-        titleLabel.getStyleClass().add("title-label");
+        VBox logCard = buildLogCard();
+        VBox.setVgrow(logCard, Priority.ALWAYS);
 
-        Label subtitleLabel = new Label("Keep your Mac awake & presence active");
-        subtitleLabel.getStyleClass().add("subtitle-label");
-
-        HBox statusBox = buildStatusBox();
-
-        intervalLabel = new Label("Next nudge in: --");
-        intervalLabel.getStyleClass().add("interval-label");
-
-        HBox buttonBox = buildButtonBox();
-
-        VBox logSection = buildLogSection();
-        VBox.setVgrow(logSection, Priority.ALWAYS);
-
-        root.getChildren().addAll(
-                titleLabel,
-                subtitleLabel,
-                styledSeparator(),
-                statusBox,
-                intervalLabel,
-                buttonBox,
-                styledSeparator(),
-                logSection
-        );
-
+        root.getChildren().addAll(buildHeader(), buildControlCard(), buildTimerCard(), logCard);
         return root;
     }
 
-    private HBox buildStatusBox() {
-        Label titleLabel = new Label("Status:");
-        titleLabel.getStyleClass().add("status-title");
+    private HBox buildHeader() {
+        Label title = new Label("PulseKeep");
+        title.getStyleClass().add("title-label");
+        Label subtitle = new Label("Keep your Mac awake & presence active");
+        subtitle.getStyleClass().add("subtitle-label");
+        VBox texts = new VBox(2, title, subtitle);
 
-        statusLabel = new Label("● STOPPED");
-        statusLabel.getStyleClass().addAll("status-label", "status-stopped");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox box = new HBox(BUTTON_SPACING);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.getChildren().addAll(titleLabel, statusLabel);
-        return box;
+        statusPill = new Label("STOPPED");
+        statusPill.getStyleClass().addAll("pill", "pill-stopped");
+
+        HBox header = new HBox(texts, spacer, statusPill);
+        header.setAlignment(Pos.CENTER_LEFT);
+        return header;
     }
 
-    private HBox buildButtonBox() {
-        startButton = new Button("▶  Start");
-        stopButton  = new Button("■  Stop");
+    private VBox buildControlCard() {
+        Label heading = cardTitle("KEEP AWAKE");
 
+        intervalLabel = new Label("Next nudge in --");
+        intervalLabel.getStyleClass().add("muted-label");
+
+        startButton = new Button("Start");
+        stopButton  = new Button("Stop");
         startButton.getStyleClass().addAll("action-button", "start-button");
         stopButton.getStyleClass().addAll("action-button", "stop-button");
-
-        // App starts in STOPPED state – stop button is disabled initially
         stopButton.setDisable(true);
-
         startButton.setOnAction(e -> handleStart());
         stopButton.setOnAction(e -> handleStop());
+        startButton.setMaxWidth(Double.MAX_VALUE);
+        stopButton.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(startButton, Priority.ALWAYS);
+        HBox.setHgrow(stopButton, Priority.ALWAYS);
 
-        HBox box = new HBox(BUTTON_SPACING);
-        box.getChildren().addAll(startButton, stopButton);
-        return box;
+        HBox buttons = new HBox(12, startButton, stopButton);
+        return card(heading, intervalLabel, buttons);
     }
 
-    private VBox buildLogSection() {
-        Label logTitle = new Label("ACTIVITY LOG");
-        logTitle.getStyleClass().add("log-title");
+    private VBox buildTimerCard() {
+        Label heading = cardTitle("AUTO-SHUTDOWN TIMER");
+
+        timerHint = new Label("Quit PulseKeep automatically after:");
+        timerHint.getStyleClass().add("muted-label");
+
+        countdownLabel = new Label("");
+        countdownLabel.getStyleClass().add("countdown-label");
+        countdownLabel.setVisible(false);
+        countdownLabel.setManaged(false);
+
+        // Preset chips fill the custom fields
+        presetRow = new HBox(8);
+        offChip = new Button("Off");
+        offChip.getStyleClass().add("chip");
+        offChip.setOnAction(e -> {
+            if (timerActive) cancelTimer();
+            hoursField.setText("0");
+            minutesField.setText("0");
+            timerHint.setText("Auto-shutdown is off");
+        });
+        presetRow.getChildren().addAll(
+                offChip,
+                chip("15 min", 0, 15), chip("30 min", 0, 30), chip("1 h", 1, 0),
+                chip("2 h", 2, 0), chip("4 h", 4, 0), chip("8 h", 8, 0));
+
+        hoursField   = numberField("0");
+        minutesField = numberField("30");
+        Label h = new Label("h");
+        Label m = new Label("min");
+        h.getStyleClass().add("muted-label");
+        m.getStyleClass().add("muted-label");
+
+        timerButton = new Button("Set timer");
+        timerButton.getStyleClass().addAll("action-button", "primary-button");
+        timerButton.setOnAction(e -> toggleTimer());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        inputRow = new HBox(8, hoursField, h, minutesField, m, spacer, timerButton);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+
+        return card(heading, timerHint, countdownLabel, presetRow, inputRow);
+    }
+
+    private VBox buildLogCard() {
+        Label heading = cardTitle("ACTIVITY LOG");
 
         logArea = new TextArea();
         logArea.setEditable(false);
@@ -226,53 +305,68 @@ public class MainView {
         logArea.getStyleClass().add("log-area");
         VBox.setVgrow(logArea, Priority.ALWAYS);
 
-        VBox section = new VBox(8, logTitle, logArea);
-        VBox.setVgrow(section, Priority.ALWAYS);
-        return section;
+        VBox card = card(heading, logArea);
+        return card;
+    }
+
+    // ── Small builders ────────────────────────────────────────────────────────
+
+    private static VBox card(javafx.scene.Node... children) {
+        VBox box = new VBox(12);
+        box.getStyleClass().add("card");
+        box.getChildren().addAll(children);
+        return box;
+    }
+
+    private static Label cardTitle(String text) {
+        Label l = new Label(text);
+        l.getStyleClass().add("card-title");
+        return l;
+    }
+
+    private Button chip(String text, int hours, int minutes) {
+        Button b = new Button(text);
+        b.getStyleClass().add("chip");
+        b.setOnAction(e -> {
+            hoursField.setText(String.valueOf(hours));
+            minutesField.setText(String.valueOf(minutes));
+        });
+        return b;
+    }
+
+    private static TextField numberField(String initial) {
+        TextField f = new TextField(initial);
+        f.getStyleClass().add("number-field");
+        f.setPrefColumnCount(3);
+        f.setAlignment(Pos.CENTER);
+        f.setTextFormatter(new TextFormatter<String>(c ->
+                c.getControlNewText().matches("\\d{0,3}") ? c : null));
+        return f;
     }
 
     // ── State updates ─────────────────────────────────────────────────────────
 
-    /**
-     * Transitions the UI to reflect {@code newState}.
-     * May be called from any thread; all UI mutations are dispatched via
-     * {@link Platform#runLater}.
-     *
-     * @param newState the target state
-     */
+    /** Transitions the UI to reflect {@code newState}. May be called from any thread. */
     public void updateState(AppState newState) {
         this.currentState = newState;
 
         Platform.runLater(() -> {
             boolean running = (newState == AppState.RUNNING);
 
-            // Update status indicator text and colour
-            statusLabel.setText("● " + newState.getDisplayName());
-            statusLabel.getStyleClass().removeAll("status-running", "status-stopped");
-            statusLabel.getStyleClass().add(running ? "status-running" : "status-stopped");
+            statusPill.setText(newState.getDisplayName().toUpperCase());
+            statusPill.getStyleClass().removeAll("pill-running", "pill-stopped");
+            statusPill.getStyleClass().add(running ? "pill-running" : "pill-stopped");
 
-            // Toggle button enable state
             startButton.setDisable(running);
             stopButton.setDisable(!running);
 
-            // Clear interval label when stopped
             if (!running) {
-                intervalLabel.setText("Next nudge in: --");
+                intervalLabel.setText("Next nudge in --");
             }
 
-            // Keep tray menu item label in sync
             if (trayManager != null) {
                 trayManager.updateTrayState(newState);
             }
         });
-    }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /** Creates a styled horizontal rule. */
-    private static Separator styledSeparator() {
-        Separator sep = new Separator();
-        sep.getStyleClass().add("custom-separator");
-        return sep;
     }
 }
