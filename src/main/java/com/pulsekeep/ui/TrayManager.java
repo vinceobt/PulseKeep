@@ -160,10 +160,7 @@ public class TrayManager {
 
         // "Quit" – stops services and exits cleanly
         MenuItem quitItem = new MenuItem("Quit");
-        quitItem.addActionListener(e -> Platform.runLater(() -> {
-            mainView.handleStop();
-            Platform.exit();
-        }));
+        quitItem.addActionListener(e -> Platform.runLater(mainView::quitApplication));
 
         menu.add(openItem);
         menu.add(toggleItem);

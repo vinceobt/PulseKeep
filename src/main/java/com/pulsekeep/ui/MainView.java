@@ -154,6 +154,12 @@ public class MainView {
                 })
         );
         setTimerActive(true);
+
+        // Setting a timer while stopped implies the user wants PulseKeep running
+        if (currentState != AppState.RUNNING) {
+            Logger.log("Timer set while stopped – starting PulseKeep");
+            handleStart();
+        }
         countdownLabel.setText(String.format("%d:%02d:%02d", d.toHours(), d.toMinutesPart(), d.toSecondsPart()));
     }
 
@@ -182,9 +188,22 @@ public class MainView {
     private void onAutoShutdownExpired() {
         Platform.runLater(() -> {
             Logger.log("Auto-shutdown: quitting PulseKeep");
-            handleStop();
-            Platform.exit();
+            quitApplication();
         });
+    }
+
+    /**
+     * Stops all activity and terminates the JVM.
+     *
+     * <p>Deliberately avoids {@code Platform.exit()} / {@code App.stop()}: removing the
+     * AWT tray icon from the JavaFX thread can deadlock on macOS and leave the window
+     * frozen. {@code System.exit} runs the JVM shutdown hook (scheduler + caffeinate
+     * cleanup) and the OS removes the tray icon when the process ends.
+     */
+    public void quitApplication() {
+        handleStop();
+        Logger.log("PulseKeep stopped");
+        System.exit(0);
     }
 
     private static long parse(TextField f) {

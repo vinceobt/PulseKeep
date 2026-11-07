@@ -135,7 +135,16 @@ public class App extends Application {
         caffeinateService.stop();
 
         if (trayManager != null) {
-            trayManager.removeTrayIcon();
+            // AWT tray removal can block when called from the FX thread on macOS;
+            // run it on a helper thread and never wait more than half a second.
+            Thread remover = new Thread(trayManager::removeTrayIcon, "PulseKeep-TrayRemover");
+            remover.setDaemon(true);
+            remover.start();
+            try {
+                remover.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         Logger.log("PulseKeep stopped");
