@@ -1,9 +1,0 @@
-<?xml version="1.0" ?>
-<jpackage-state version="26.0.1" platform="macOS">
-  <app-version>1.0.0</app-version>
-  <app-store>false</app-store>
-  <main-class>com.pulsekeep.Launcher</main-class>
-  <signed>false</signed>
-  <main-launcher name="PulseKeep">
-    <description>PulseKeep</description>
-  </main-launcher></jpackage-state>
