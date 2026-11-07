@@ -1,187 +1,210 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   PulseKeep – Dark Theme Stylesheet
-   Loaded at runtime via: getClass().getResource("/styles.css")
+   PulseKeep – Modern dark theme
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Root / window background ─────────────────────────────────────────────── */
 .root {
-    -fx-background-color: #1a1a2e;
+    -fx-background-color: #0f1220;
     -fx-font-family: "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
 }
 
 .root-container {
-    -fx-background-color: #1a1a2e;
+    -fx-background-color: linear-gradient(to bottom, #131730, #0b0e1a);
 }
 
 /* ── Header ───────────────────────────────────────────────────────────────── */
 .title-label {
-    -fx-text-fill: #e8e8f0;
-    -fx-font-size: 28px;
+    -fx-text-fill: #f2f4ff;
+    -fx-font-size: 26px;
     -fx-font-weight: bold;
 }
 
 .subtitle-label {
-    -fx-text-fill: #6a6a8a;
-    -fx-font-size: 13px;
+    -fx-text-fill: #7e88ad;
+    -fx-font-size: 12px;
 }
 
-/* ── Separator ────────────────────────────────────────────────────────────── */
-.custom-separator {
-    -fx-background-color: #2d2d4e;
-    -fx-border-color:     transparent;
-    -fx-padding:          2 0 2 0;
-}
-
-.custom-separator > .line {
-    -fx-border-color: #2d2d4e;
-    -fx-border-width: 1 0 0 0;
-}
-
-/* ── Status row ───────────────────────────────────────────────────────────── */
-.status-title {
-    -fx-text-fill: #6a6a8a;
-    -fx-font-size: 14px;
-}
-
-.status-label {
-    -fx-font-size:   14px;
+/* ── Status pill ──────────────────────────────────────────────────────────── */
+.pill {
+    -fx-padding: 6 14 6 14;
+    -fx-background-radius: 20;
+    -fx-font-size: 11px;
     -fx-font-weight: bold;
 }
 
-.status-running {
-    -fx-text-fill: #00c864;
+.pill-running {
+    -fx-background-color: rgba(46, 204, 143, 0.16);
+    -fx-text-fill: #2ecc8f;
 }
 
-.status-stopped {
-    -fx-text-fill: #ff4444;
+.pill-stopped {
+    -fx-background-color: rgba(255, 93, 108, 0.16);
+    -fx-text-fill: #ff7480;
 }
 
-/* ── Interval label ───────────────────────────────────────────────────────── */
-.interval-label {
-    -fx-text-fill: #6a6a8a;
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.card {
+    -fx-background-color: #171b30;
+    -fx-background-radius: 14;
+    -fx-border-color: #252a47;
+    -fx-border-radius: 14;
+    -fx-padding: 16 18 18 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 14, 0, 0, 4);
+}
+
+.card-title {
+    -fx-text-fill: #7e88ad;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 1px;
+}
+
+.muted-label {
+    -fx-text-fill: #9aa3c4;
     -fx-font-size: 13px;
 }
 
-/* ── Action buttons (shared base) ─────────────────────────────────────────── */
+.countdown-label {
+    -fx-text-fill: #8f9bff;
+    -fx-font-size: 34px;
+    -fx-font-weight: bold;
+    -fx-font-family: "SF Mono", "Menlo", "Consolas", monospace;
+}
+
+/* ── Buttons (shared) ─────────────────────────────────────────────────────── */
 .action-button {
-    -fx-min-width:         130px;
-    -fx-min-height:        42px;
-    -fx-font-size:         14px;
-    -fx-font-weight:       bold;
-    -fx-background-radius: 8px;
-    -fx-border-radius:     8px;
-    -fx-cursor:            hand;
-    -fx-effect:            dropshadow(gaussian, rgba(0,0,0,0.35), 6, 0, 0, 2);
-}
-
-/* ── Start button ─────────────────────────────────────────────────────────── */
-.start-button {
-    -fx-background-color: #00c864;
-    -fx-text-fill:        #1a1a2e;
-}
-
-.start-button:hover {
-    -fx-background-color: #00e87a;
-}
-
-.start-button:pressed {
-    -fx-background-color: #009e50;
-    -fx-effect:           dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0, 0, 1);
-}
-
-.start-button:disabled {
-    -fx-background-color: #1a3d28;
-    -fx-text-fill:        #3a6048;
-    -fx-effect:           none;
-    -fx-cursor:           default;
-}
-
-/* ── Stop button ──────────────────────────────────────────────────────────── */
-.stop-button {
-    -fx-background-color: #ff4444;
-    -fx-text-fill:        #ffffff;
-}
-
-.stop-button:hover {
-    -fx-background-color: #ff6666;
-}
-
-.stop-button:pressed {
-    -fx-background-color: #cc3333;
-    -fx-effect:           dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0, 0, 1);
-}
-
-.stop-button:disabled {
-    -fx-background-color: #3d1a1a;
-    -fx-text-fill:        #604040;
-    -fx-effect:           none;
-    -fx-cursor:           default;
-}
-
-/* ── Activity log section ─────────────────────────────────────────────────── */
-.log-title {
-    -fx-text-fill:   #4a4a6a;
-    -fx-font-size:   11px;
+    -fx-min-height: 40px;
+    -fx-padding: 0 22 0 22;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
 }
 
+.start-button {
+    -fx-background-color: linear-gradient(to bottom, #36d89a, #22b87c);
+    -fx-text-fill: #08241a;
+}
+.start-button:hover   { -fx-background-color: linear-gradient(to bottom, #4be3aa, #2ecc8f); }
+.start-button:pressed { -fx-background-color: #1a9c68; }
+.start-button:disabled {
+    -fx-background-color: #1b2b2c;
+    -fx-text-fill: #3f6a5a;
+    -fx-cursor: default;
+}
+
+.stop-button {
+    -fx-background-color: linear-gradient(to bottom, #ff6b78, #e84a5a);
+    -fx-text-fill: #ffffff;
+}
+.stop-button:hover   { -fx-background-color: linear-gradient(to bottom, #ff808b, #f25a69); }
+.stop-button:pressed { -fx-background-color: #c93a49; }
+.stop-button:disabled {
+    -fx-background-color: #2b1d2a;
+    -fx-text-fill: #6a444b;
+    -fx-cursor: default;
+}
+
+.primary-button {
+    -fx-background-color: linear-gradient(to bottom, #7a88ff, #5c6bf0);
+    -fx-text-fill: #ffffff;
+}
+.primary-button:hover   { -fx-background-color: linear-gradient(to bottom, #8d99ff, #6c7bff); }
+.primary-button:pressed { -fx-background-color: #4a58d4; }
+
+.danger-button {
+    -fx-background-color: rgba(255, 93, 108, 0.16);
+    -fx-text-fill: #ff7480;
+}
+.danger-button:hover   { -fx-background-color: rgba(255, 93, 108, 0.28); }
+.danger-button:pressed { -fx-background-color: rgba(255, 93, 108, 0.40); }
+
+/* ── Preset chips ─────────────────────────────────────────────────────────── */
+.chip {
+    -fx-background-color: #20253f;
+    -fx-text-fill: #b4bcdc;
+    -fx-background-radius: 16;
+    -fx-padding: 6 13 6 13;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+.chip:hover   { -fx-background-color: #2b3156; -fx-text-fill: #ffffff; }
+.chip:pressed { -fx-background-color: #5c6bf0; -fx-text-fill: #ffffff; }
+.chip:disabled { -fx-opacity: 0.4; }
+
+/* ── Number inputs ────────────────────────────────────────────────────────── */
+.number-field {
+    -fx-background-color: #0f1220;
+    -fx-text-fill: #f2f4ff;
+    -fx-prompt-text-fill: #55608a;
+    -fx-highlight-fill: #5c6bf0;
+    -fx-background-radius: 8;
+    -fx-border-color: #2a3050;
+    -fx-border-radius: 8;
+    -fx-padding: 8 6 8 6;
+    -fx-font-size: 15px;
+    -fx-pref-width: 62px;
+}
+.number-field:focused {
+    -fx-border-color: #6c7bff;
+}
+.number-field:disabled {
+    -fx-opacity: 0.5;
+}
+
+/* ── Activity log ─────────────────────────────────────────────────────────── */
 .log-area {
-    /* Inner background colour (text input area) */
-    -fx-control-inner-background: #0d0d1a;
-    -fx-text-fill:                #00c864;
-    -fx-font-family:              "SF Mono", "Menlo", "Consolas", monospace;
-    -fx-font-size:                12px;
-    -fx-highlight-fill:           #2d4d3a;
-    -fx-highlight-text-fill:      #e8e8f0;
-
-    /* Border */
-    -fx-border-color:             #2d2d4e;
-    -fx-border-radius:            8px;
-    -fx-background-radius:        8px;
-    -fx-background-color:         #0d0d1a;
+    -fx-control-inner-background: #0c0f1d;
+    -fx-text-fill: #7fe0b5;
+    -fx-font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-highlight-fill: #2d3d6a;
+    -fx-highlight-text-fill: #f2f4ff;
+    -fx-background-color: #0c0f1d;
+    -fx-background-radius: 10;
+    -fx-border-color: #20253f;
+    -fx-border-radius: 10;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
 
-/* Force inner scroll pane and viewport to use the same background */
+.log-area .content {
+    -fx-background-color: #0c0f1d;
+    -fx-background-radius: 10;
+}
+
 .log-area > .scroll-pane {
-    -fx-background-color: #0d0d1a;
-    -fx-background-radius: 8px;
+    -fx-background-color: transparent;
 }
 
-.log-area > .scroll-pane > .viewport {
-    -fx-background-color: #0d0d1a;
-}
-
+.log-area > .scroll-pane > .viewport,
 .log-area > .scroll-pane > .corner {
-    -fx-background-color: #0d0d1a;
+    -fx-background-color: #0c0f1d;
 }
 
-/* Scroll-bar track */
-.log-area > .scroll-pane .scroll-bar:vertical .track,
-.log-area > .scroll-pane .scroll-bar:horizontal .track {
-    -fx-background-color: #1a1a2e;
-    -fx-border-color:     transparent;
+.log-area .scroll-bar:vertical,
+.log-area .scroll-bar:horizontal {
+    -fx-background-color: transparent;
 }
 
-/* Scroll-bar thumb */
-.log-area > .scroll-pane .scroll-bar:vertical .thumb,
-.log-area > .scroll-pane .scroll-bar:horizontal .thumb {
-    -fx-background-color: #3a3a5e;
-    -fx-background-radius: 4px;
+.log-area .scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
 }
 
-.log-area > .scroll-pane .scroll-bar:vertical .thumb:hover,
-.log-area > .scroll-pane .scroll-bar:horizontal .thumb:hover {
-    -fx-background-color: #5a5a8a;
+.log-area .scroll-bar .thumb {
+    -fx-background-color: #2f3659;
+    -fx-background-radius: 4;
 }
+.log-area .scroll-bar .thumb:hover { -fx-background-color: #4a5385; }
 
-/* Scroll-bar increment/decrement buttons */
-.log-area > .scroll-pane .scroll-bar .increment-button,
-.log-area > .scroll-pane .scroll-bar .decrement-button {
-    -fx-background-color: #1a1a2e;
-    -fx-padding: 2;
+.log-area .scroll-bar .increment-button,
+.log-area .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
 }
-
-.log-area > .scroll-pane .scroll-bar .increment-arrow,
-.log-area > .scroll-pane .scroll-bar .decrement-arrow {
-    -fx-background-color: #4a4a6a;
+.log-area .scroll-bar .increment-arrow,
+.log-area .scroll-bar .decrement-arrow {
+    -fx-shape: " ";
+    -fx-padding: 0;
 }

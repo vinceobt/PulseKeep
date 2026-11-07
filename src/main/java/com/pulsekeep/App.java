@@ -1,5 +1,6 @@
 package com.pulsekeep;
 
+import com.pulsekeep.service.AutoShutdownService;
 import com.pulsekeep.service.CaffeinateService;
 import com.pulsekeep.service.MouseMovementService;
 import com.pulsekeep.service.SchedulerService;
@@ -39,6 +40,7 @@ public class App extends Application {
 
     private CaffeinateService  caffeinateService;
     private SchedulerService   schedulerService;
+    private AutoShutdownService autoShutdownService;
 
     // ── UI fields (populated in start()) ─────────────────────────────────────
 
@@ -79,6 +81,7 @@ public class App extends Application {
         }
 
         schedulerService = new SchedulerService(mouseMovementService);
+        autoShutdownService = new AutoShutdownService();
     }
 
     /**
@@ -94,7 +97,7 @@ public class App extends Application {
         Platform.setImplicitExit(false);
 
         // Build and show the main window
-        mainView = new MainView(caffeinateService, schedulerService);
+        mainView = new MainView(caffeinateService, schedulerService, autoShutdownService);
         mainView.show(primaryStage);
 
         // System tray integration (graceful degradation when unsupported)
@@ -112,6 +115,7 @@ public class App extends Application {
 
         // JVM shutdown hook – safety net for SIGTERM / abnormal exits
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            autoShutdownService.shutdown();
             schedulerService.shutdown();
             caffeinateService.stop();
             Logger.log("PulseKeep shutdown complete");
@@ -126,6 +130,7 @@ public class App extends Application {
      */
     @Override
     public void stop() {
+        autoShutdownService.shutdown();
         schedulerService.shutdown();
         caffeinateService.stop();
 
@@ -134,5 +139,12 @@ public class App extends Application {
         }
 
         Logger.log("PulseKeep stopped");
+
+        /*
+         * Platform.exit() only stops JavaFX. The AWT toolkit (initialised in
+         * main() for the tray icon and Robot) keeps non-daemon threads alive,
+         * so without this the JVM would linger after the window is gone.
+         */
+        System.exit(0);
     }
 }
